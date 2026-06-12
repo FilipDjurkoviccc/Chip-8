@@ -1,48 +1,67 @@
-//
-// Created by filip on 1/13/25.
-//
-
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
+#include <random>
 #include <string>
-
-#define FONT_START_ADDRESS 0
-#define FONT_SIZE 80
-
-
-// 0x200-0xFFF reserved memory for programs, 0x000-0x1FF reserved for interpreter
-const unsigned int memory_size = 4096;
-const unsigned int registers_size = 16;
-const unsigned int SCREEN_WIDTH = 64;
-const unsigned int SCREEN_HEIGHT = 32;
-
 
 class Chip8 {
   public:
-    Chip8();
-    void LoadRom(const std::string pathtofile);
-    void Cycle();
-    void getMemory(int index);
-    void setKey(int);
-    void unsetKey(int);
+    static constexpr std::size_t MemorySize = 4096;
+    static constexpr std::size_t RegisterCount = 16;
+    static constexpr std::size_t StackSize = 16;
+    static constexpr std::size_t KeyCount = 16;
+    static constexpr std::size_t ScreenWidth = 64;
+    static constexpr std::size_t ScreenHeight = 32;
+    static constexpr std::size_t ScreenSize = ScreenWidth * ScreenHeight;
+    static constexpr std::size_t FontSize = 80;
 
-    uint8_t memory[memory_size];
-    uint16_t opcode;
-    bool drawflag;
-    uint8_t video[64 * 32]{0};
-    
+    using DisplayBuffer = std::array<uint8_t, ScreenSize>;
+
+    Chip8();
+
+    void loadRom(const std::string& pathToFile);
+    void cycle();
+    void setKey(std::size_t key);
+    void unsetKey(std::size_t key);
+
+    const DisplayBuffer& display() const;
+    bool shouldDraw() const;
+    void clearDrawFlag();
+
+    // Compatibility with the original API names.
+    void LoadRom(const std::string& pathToFile);
+    void Cycle();
+
   private:
-    void print();
+    static constexpr uint16_t ProgramStartAddress = 0x200;
+    static constexpr uint16_t FontStartAddress = 0x000;
+
+    void reset();
     void executeInstruction();
-    // 16 8-bit data registers V0-VF
-    uint8_t V[registers_size]{0};
-    // we will use mask 0x0FFF to ensure 12bits
-    uint16_t I;
-    uint16_t pc;
-    uint16_t stack[16]{0};
-    uint8_t sp;
-    uint8_t delay_timer;
-    uint8_t sound_timer;
-    uint8_t keys[16]{0};
+    void clearDisplay();
+    void drawSprite(uint8_t x, uint8_t y, uint8_t height);
+    int pressedKey() const;
+
+    uint8_t xRegister() const;
+    uint8_t yRegister() const;
+    uint8_t byteOperand() const;
+    uint16_t addressOperand() const;
+
+    std::array<uint8_t, MemorySize> memory_{};
+    std::array<uint8_t, RegisterCount> registers_{};
+    std::array<uint16_t, StackSize> stack_{};
+    std::array<uint8_t, KeyCount> keys_{};
+    DisplayBuffer display_{};
+
+    uint16_t opcode_{0};
+    uint16_t index_{0};
+    uint16_t pc_{ProgramStartAddress};
+    uint8_t sp_{0};
+    uint8_t delayTimer_{0};
+    uint8_t soundTimer_{0};
+    bool drawFlag_{false};
+
+    std::mt19937 randomGenerator_;
 };
